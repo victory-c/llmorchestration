@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: typecheck + lint + test + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+        env:
+          # Tests run against pglite, no real DB required.
+          NODE_ENV: test
+
+      - name: Build (Next.js production smoke)
+        run: pnpm build
+        env:
+          # Build only needs to compile — no real keys required.
+          NODE_ENV: production
+
+  secret-scan:
+    name: secret hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Disallow common secret patterns in tracked files
+        run: |
+          set -euo pipefail
+          # Patterns matched against tracked files only.
+          # Allowlisted: docs/, README, .env.example, node_modules, test files.
+          PATTERNS='sk-or-v[0-9]{1,2}-[A-Za-z0-9]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|sk-ant-api[0-9]{1,2}-[A-Za-z0-9_-]{20,}|vgk_[A-Za-z0-9_-]{20,}|xoxb-[0-9]+-[0-9]+-[A-Za-z0-9]+|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|ghs_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{82}'
+          MATCHES=$(git ls-files | \
+            grep -vE '^(node_modules/|\.env\.example$|README\.md$|docs/|.*\.test\.ts$|.*\.test\.tsx$)' | \
+            xargs grep -EHn "$PATTERNS" 2>/dev/null || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Possible secret-shaped strings in tracked files:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "OK: no secret-shaped strings in tracked files."
+
+      - name: Disallow committed media binaries
+        run: |
+          set -euo pipefail
+          MATCHES=$(git ls-files | grep -iE '\.(mp3|mp4|wav|m4a|webm|ogg)$|^public/media/' || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Generated media must not be committed:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "OK: no media binaries tracked."
+
+      - name: Confirm .env files are gitignored
+        run: |
+          set -euo pipefail
+          MATCHES=$(git ls-files | grep -E '^\.env$|^\.env\.(local|production|development)$' || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Tracked .env files must be removed:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "OK: no tracked .env files."

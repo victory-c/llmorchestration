@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/app/api/runs/[id]/video/route.ts": {
+      "maxDuration": 300
+    }
+  }
+}
