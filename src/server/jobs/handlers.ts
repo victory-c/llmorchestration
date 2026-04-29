@@ -11,6 +11,7 @@ import {
 } from "@/server/cost/enforceLimits";
 import { estimateRunCost } from "@/server/cost/estimateCost";
 import { moderateActorOutput, MODERATION_OUTPUT_FLAG_THRESHOLD } from "@/server/safety/moderateOutput";
+import { incrementModerationFlags } from "@/server/jobs/moderationDb";
 import { logSafetyEvent, sumActualCostUsd } from "@/server/cost/logUsage";
 import type { RunState } from "@/server/engine/types";
 import { getTTSProvider } from "@/server/tts";
@@ -19,17 +20,6 @@ import { getMediaAssets } from "@/server/media";
 import { generateAudioForRun } from "@/server/media/generateAudio";
 import { generateVideoForRun } from "@/server/media/generateVideo";
 import type { VideoStyle } from "@/server/media/storyboard";
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __arenaRunModerationFlags: Map<string, number> | undefined;
-}
-
-function flagStore(): Map<string, number> {
-  if (!globalThis.__arenaRunModerationFlags)
-    globalThis.__arenaRunModerationFlags = new Map();
-  return globalThis.__arenaRunModerationFlags;
-}
 
 function judgeModelIdForRun(): string {
   const env = getEnv();
@@ -104,14 +94,14 @@ async function handleRunRound(job: Job): Promise<void> {
   const updated = await store.getRun(runId);
   if (updated) {
     const lastRound = newState.round;
-    const actorMessagesThisRound = updated.messages.filter(
-      (m) => m.round === lastRound && m.speakerType === "actor",
+    const messagesThisRound = updated.messages.filter(
+      (m) => m.round === lastRound && (m.speakerType === "actor" || m.speakerType === "judge"),
     );
-    let flags = flagStore().get(runId) ?? 0;
-    for (const m of actorMessagesThisRound) {
+    let newViolations = 0;
+    for (const m of messagesThisRound) {
       const result = moderateActorOutput(m.content);
       if (!result.allowed) {
-        flags++;
+        newViolations++;
         logSafetyEvent({
           runId,
           eventType: "moderation-block",
@@ -123,17 +113,19 @@ async function handleRunRound(job: Job): Promise<void> {
         });
       }
     }
-    flagStore().set(runId, flags);
 
-    if (flags >= MODERATION_OUTPUT_FLAG_THRESHOLD) {
-      const blocked: RunState = {
-        ...newState,
-        status: "failed",
-        terminationReason: "moderation_block",
-      };
-      await store.updateRunState(runId, blocked);
-      await queue.cancelJobsForRun(runId);
-      return;
+    if (newViolations > 0) {
+      const totalFlags = await incrementModerationFlags(runId, newViolations);
+      if (totalFlags >= MODERATION_OUTPUT_FLAG_THRESHOLD) {
+        const blocked: RunState = {
+          ...newState,
+          status: "failed",
+          terminationReason: "moderation_block",
+        };
+        await store.updateRunState(runId, blocked);
+        await queue.cancelJobsForRun(runId);
+        return;
+      }
     }
   }
 
@@ -218,6 +210,4 @@ export async function handleJob(job: Job): Promise<void> {
   }
 }
 
-export function resetRunModerationFlagsForTests() {
-  globalThis.__arenaRunModerationFlags = new Map();
-}
+export { resetRunModerationFlagsForTests } from "@/server/jobs/moderationDb";

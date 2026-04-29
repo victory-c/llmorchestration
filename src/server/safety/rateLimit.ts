@@ -74,6 +74,9 @@ export function resetRateLimitsForTests() {
   globalThis.__arenaRateLimiter = new Map();
 }
 
+// X-Forwarded-For is trusted unconditionally here. This is safe only when the
+// app is deployed behind a trusted proxy (Vercel, etc.) that overwrites the
+// header; in other deployments callers can spoof it.
 export function getClientIp(req: Request): string {
   const h = req.headers;
   const forwarded = h.get("x-forwarded-for");

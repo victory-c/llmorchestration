@@ -22,13 +22,6 @@ export function buildJudgePrompt(input: BuildJudgePromptInput): ModelRequest {
     .map((m) => `- ${m.displayName}: ${m.content}`)
     .join("\n");
 
-  const participants = state.participants
-    .map(
-      (p) =>
-        `  { "id": "${p.id}", "displayName": "${p.displayName}", "status": "${p.status}" }`,
-    )
-    .join(",\n");
-
   const schema = `{
   "roundSummary": string,
   "stateUpdates": {

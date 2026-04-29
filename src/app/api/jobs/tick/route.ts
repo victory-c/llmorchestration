@@ -23,12 +23,6 @@ async function handle(req: Request) {
   const hasToken = Boolean(env.JOBS_TICK_TOKEN);
   const authorized = hasToken && tokenHeader === env.JOBS_TICK_TOKEN;
 
-  if (hasToken && !authorized && env.DEMO_MODE) {
-    // In DEMO_MODE when a token is configured, external callers MUST supply it.
-    // The client-triggered tick path uses the per-IP rate limit below instead,
-    // which is only skipped when the caller has the valid token.
-  }
-
   if (hasToken && !authorized && !env.DEMO_MODE) {
     return NextResponse.json(
       { error: "Unauthorized: missing or invalid X-Jobs-Tick-Token." },
