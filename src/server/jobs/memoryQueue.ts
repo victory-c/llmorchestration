@@ -14,7 +14,7 @@ import type {
 } from "@/server/jobs/types";
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __arenaJobQueue: Map<string, Job> | undefined;
 }
 

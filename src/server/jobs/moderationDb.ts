@@ -3,7 +3,7 @@ import { getDb, hasDatabaseUrl } from "@/server/db/client";
 import { runs } from "@/server/db/schema";
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __arenaRunModerationFlags: Map<string, number> | undefined;
 }
 

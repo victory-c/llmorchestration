@@ -6,7 +6,7 @@ import { getEnv } from "@/lib/env";
 export type Db = ReturnType<typeof drizzle<typeof schema>>;
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __arenaDb: { db: Db; sql: ReturnType<typeof postgres> } | undefined;
 }
 

@@ -10,7 +10,7 @@ type Bucket = {
 type BucketMap = Map<string, Bucket>;
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __arenaRateLimiter: Map<string, BucketMap> | undefined;
 }
 

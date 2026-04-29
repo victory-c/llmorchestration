@@ -10,7 +10,7 @@ import type {
 } from "@/server/media/types";
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __arenaMediaAssets: Map<string, MediaAsset> | undefined;
 }
 

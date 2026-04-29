@@ -7,7 +7,7 @@ import type { RunRepository, StoredRun } from "@/server/store/types";
 import type { RunState, TranscriptMessage } from "@/server/engine/types";
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __arenaMemoryStore: Map<string, StoredRun> | undefined;
 }
 

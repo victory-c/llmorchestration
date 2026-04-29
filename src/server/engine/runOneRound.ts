@@ -4,7 +4,6 @@ import type { RunRepository } from "@/server/store/types";
 import type {
   RunState,
   TranscriptMessage,
-  Scenario,
 } from "@/server/engine/types";
 import { buildActorPrompt } from "@/server/engine/buildActorPrompt";
 import { buildJudgePrompt } from "@/server/engine/buildJudgePrompt";

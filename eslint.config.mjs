@@ -12,7 +12,29 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude Code session state — embedded git worktrees that shadow src/.
+    ".claude/**",
+    // Other workspace noise we don't ship.
+    "scratch/**",
+    "tmp/**",
   ]),
+  {
+    rules: {
+      // Standard convention: a leading underscore signals "this argument is
+      // here to satisfy an interface contract". Storage / TTS / gateway
+      // adapters all hit this when their backing API doesn't need an arg
+      // the abstract interface requires.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

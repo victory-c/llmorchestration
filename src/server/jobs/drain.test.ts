@@ -61,7 +61,7 @@ describe("drainJobs (mock end-to-end)", () => {
 
     // Drain rounds one tick at a time (up to a safety cap).
     let iterations = 0;
-    // eslint-disable-next-line no-constant-condition
+     
     while (iterations < 10) {
       iterations++;
       const result = await drainJobs({ maxJobs: 1 });

@@ -40,7 +40,7 @@ export const vercelBlobStorage: StorageProvider = {
     await del(key, { token: env.BLOB_READ_WRITE_TOKEN });
   },
 
-  async getUrl(key: string): Promise<string> {
+  async getUrl(_key: string): Promise<string> {
     // Vercel Blob public URLs live under a stable hostname tied to the store.
     // Callers typically persist the URL returned from put(); this helper is
     // only used for keys where we don't have the URL on hand (regenerate).
