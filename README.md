@@ -130,7 +130,7 @@ A demo can never loosen past the operator's env floor. See
 
 ## Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FYOUR_USERNAME%2Fllmorchestration&env=DEMO_MODE,MODEL_GATEWAY_PROVIDER,DATABASE_URL,DIRECT_URL&project-name=llm-scenario-arena&repository-name=llmorchestration)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvictory-c%2Fllmorchestration&env=DEMO_MODE,MODEL_GATEWAY_PROVIDER,DATABASE_URL,DIRECT_URL&project-name=llm-scenario-arena&repository-name=llmorchestration)
 
 Full instructions: [`docs/deployment.md`](docs/deployment.md).
 
