@@ -42,6 +42,7 @@ export type RunState = {
   participants: RunParticipant[];
   recentEvents: RunEvent[];
   terminationReason?: string;
+  nextRoundContext?: string;
 };
 
 export type SpeakerType = "actor" | "judge" | "system";
