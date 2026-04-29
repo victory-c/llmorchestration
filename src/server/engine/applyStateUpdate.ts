@@ -41,5 +41,6 @@ export function applyStateUpdate(
     terminationReason: judge.shouldTerminate
       ? judge.terminationReason ?? state.terminationReason
       : state.terminationReason,
+    nextRoundContext: judge.nextRoundPrompt ?? undefined,
   };
 }
