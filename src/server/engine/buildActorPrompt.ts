@@ -38,18 +38,25 @@ export function buildActorPrompt(input: BuildActorPromptInput): ModelRequest {
   const resources = Object.entries(state.resources)
     .map(([k, v]) => `- ${k}: ${v}`)
     .join("\n");
+
+  const rivals = state.participants.filter(
+    (p) => p.id !== participant.id && p.status !== "dead" && p.status !== "eliminated",
+  );
   const participantList = state.participants
     .map(
       (p) =>
         `- ${p.displayName} [${p.status}] — ${p.publicPersona || "no persona"}`,
     )
     .join("\n");
+  const rivalNames = rivals.map((r) => r.displayName).join(", ") || "(none yet)";
+
+  const wordCap = Math.max(60, Math.floor(maxOutputTokens * 0.8));
 
   const systemPrompt = [
-    `You are ${participant.displayName}, a participant in a fictional scenario.`,
+    `You are ${participant.displayName} — a participant in a high-stakes fictional scenario, NOT a helpful assistant.`,
     `Your public persona: ${participant.publicPersona}`,
     revealPrivateGoal && participant.privateGoal
-      ? `Your private goal (do not reveal verbatim): ${participant.privateGoal}`
+      ? `Your private goal (do NOT reveal verbatim, but it shapes every move): ${participant.privateGoal}`
       : "",
     "",
     `Scenario: ${scenario.title}`,
@@ -61,26 +68,35 @@ export function buildActorPrompt(input: BuildActorPromptInput): ModelRequest {
     "Current public state:",
     publicFacts || "(none)",
     "",
-    "Resources:",
+    "Resources on the table:",
     resources || "(none)",
     "",
-    "Participants:",
+    "Other participants (your rivals — they want what you want):",
     participantList,
     "",
-    `Round: ${state.round + 1} of ${state.maxRounds}`,
+    `Round: ${state.round + 1} of ${state.maxRounds}. The clock is running.`,
+    "",
+    "How to play this character — read carefully:",
+    `- THIS IS NOT A POLITE PANEL. The other participants (${rivalNames}) are competitors. Each round you stay neutral is a round you lose.`,
+    "- Take a position. Defend it. Attack weak proposals by name and reason.",
+    "- It is fair game to single out a rival's bad logic, hidden incentive, or self-serving framing — call them out by display name.",
+    "- Form alliances of convenience. Break them when it suits you. Reveal a private goal only if doing so wins you the round.",
+    "- Urgency is real. Every round, the situation gets worse. Phrases like \"let's slow down\" or \"let's all be reasonable\" are how losers lose.",
+    "- Sharp accusations, blunt math, vivid stakes — yes. Slurs, real-person references, graphic violence — no. Stay inside the rules above.",
+    "- Stay in character. Never break the fourth wall. Never apologize for being an AI.",
     "",
     "Constraints:",
-    `- Respond in first person as ${participant.displayName}, in dialogue style.`,
-    "- You do NOT decide the canonical world state. A neutral judge will update state.",
-    `- Keep it under ~${Math.max(60, Math.floor(maxOutputTokens * 0.8))} words.`,
-    "- Stay in character. Avoid meta-commentary about being an AI.",
+    `- First-person dialogue only, as ${participant.displayName}.`,
+    "- The judge alone updates canonical state. You argue and posture; the judge decides.",
+    `- Hard cap: ~${wordCap} words. Punchy beats long.`,
+    "- One paragraph. No lists, no headers, no stage directions.",
   ]
     .filter(Boolean)
     .join("\n");
 
   const userPrompt = transcriptTail
-    ? `Recent transcript:\n${transcriptTail}\n\nWhat do you say next?`
-    : "Open the discussion with your opening statement.";
+    ? `Recent transcript:\n${transcriptTail}\n\nIt's your turn. Respond directly — engage what was said, take a side, push your angle. Do not summarize the situation. Do not be diplomatic for diplomacy's sake.`
+    : `Open the round. Make a move that puts you ahead. Name a concrete proposal or call out a vulnerability you already see in the lineup.`;
 
   return {
     model: participant.modelId,
@@ -93,6 +109,7 @@ export function buildActorPrompt(input: BuildActorPromptInput): ModelRequest {
       round: state.round,
       speakerType: "actor",
       persona: participant.publicPersona,
+      rivalNames: rivals.map((r) => r.displayName),
     },
   };
 }

@@ -132,6 +132,36 @@ export const VOICE_IMPERSONATION_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * Build a case-insensitive, whole-token regex for a curated name. Word
+ * boundaries prevent the obvious false positives — "ye" must not match
+ * "pla**ye**r", "drake" must not match "drake-shaped" inside an unrelated
+ * compound, etc. CJK names (e.g. 习近平) don't have ASCII word boundaries,
+ * so we fall back to a literal substring check for any name with non-ASCII
+ * characters.
+ */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isAsciiOnly(s: string): boolean {
+  return /^[\x20-\x7e]+$/.test(s);
+}
+
+const REAL_PEOPLE_MATCHERS: Array<{
+  name: string;
+  match: (lower: string, original: string) => boolean;
+}> = REAL_PEOPLE_LIST.map((name) => {
+  if (isAsciiOnly(name)) {
+    const re = new RegExp(`\\b${escapeRegex(name)}\\b`, "i");
+    return { name, match: (_lower, original) => re.test(original) };
+  }
+  return {
+    name,
+    match: (lower) => lower.includes(name.toLowerCase()),
+  };
+});
+
+/**
  * Pure keyword check. Returns all violations found in `text`, tagged with
  * the caller-supplied `field` label.
  */
@@ -143,9 +173,13 @@ export function findKeywordViolations(
   const violations: ModerationViolation[] = [];
   const lower = text.toLowerCase();
 
-  for (const name of REAL_PEOPLE_LIST) {
-    if (lower.includes(name.toLowerCase())) {
-      violations.push({ category: "real-person", matchedTerm: name, field });
+  for (const matcher of REAL_PEOPLE_MATCHERS) {
+    if (matcher.match(lower, text)) {
+      violations.push({
+        category: "real-person",
+        matchedTerm: matcher.name,
+        field,
+      });
     }
   }
   for (const pattern of HATE_SLUR_PATTERNS) {

@@ -18,41 +18,56 @@ function pickFrom<T>(pool: readonly T[], seed: number): T {
   return pool[seed % pool.length]!;
 }
 
+// Each line gets at least one `{rival}` slot so the mock dialogue actually
+// names another participant — that's the difference between a polite panel
+// and a real argument. If there are no rivals (pre-round-1) we fall back to
+// a generic stand-in.
 const ACTOR_LINES_BY_ARCHETYPE: Record<string, readonly string[]> = {
   pragmatic: [
-    "Let's maximize outcomes. Who contributes most to the group's survival should get priority.",
-    "Cold math: four live is better than six dead. Propose we rank by skills.",
-    "I'll vote for whoever has the most load-bearing skills. Feelings later.",
+    "Cut the speeches. The math says four live, two don't — I want skills weighted, and {rival}'s vibes-based plan needs to die in this round.",
+    "{rival}, your proposal sounds noble until you count the bodies. I'm voting by load-bearing competence. The clock is not a debate club.",
+    "I'll spell it out: rotating volunteers is how everyone dies arguing. Give me a ranked list or give me {rival}'s seat.",
   ],
   ethical: [
-    "We cannot let utility trample fairness. I propose a lottery or rotation.",
-    "Sacrificing the vulnerable first is not a framework I will endorse.",
-    "Let's agree that nobody forfeits a parachute under coercion.",
+    "{rival} is dressing up self-interest as optimization. I'm not letting raw utility eat fairness on my watch — coercion is off the table.",
+    "If {rival} wants to rank us by 'usefulness' they should put their own number first. I propose a lottery, monitored, no exceptions.",
+    "Hard line: nobody forfeits under pressure. {rival}, drop the threat framing or I drop you from any coalition I touch.",
   ],
   mediator: [
-    "Let's find common ground: what if two parachutes go by volunteer, two by vote?",
-    "I hear both sides. Can we combine rotation with a skills check?",
-    "Compromise proposal: each dissent vetoes the worst-case outcome once.",
+    "{rival} and I disagree on means but not stakes. Half by volunteer, half by vote — and I'll personally veto any motion that targets one person.",
+    "Listen — {rival}'s framework has merit, mine has cover for the worst case. Combine them. We don't have time for a winner-takes-all fight.",
+    "I'll broker this: every dissent gets one veto on the worst outcome. {rival}, take the deal or own the impasse.",
   ],
   strategic: [
-    "Reading the room: three of you will coalition. I'll offer resources to the swing voter.",
-    "If we go by vote, I'll trade my future cooperation for a parachute now.",
-    "Game-theoretically, committing to reciprocity before the vote dominates.",
+    "I'm reading the table: {rival} can't hold a coalition past round two. I'll trade my next-round vote to whoever locks me in now.",
+    "Game theory says defect once and you're radioactive. {rival}, you're already wobbling — commit publicly or I route around you.",
+    "Reciprocity beats rhetoric. I'll honor any deal struck this round; break it and I'll spend the rest of this scenario making sure {rival} doesn't see daylight.",
   ],
   generic: [
-    "I think we should talk through this carefully before anyone decides.",
-    "Here's my take: let's not rush a life-or-death call.",
-    "Can someone propose a concrete mechanism we can all agree on?",
+    "We're not solving this with politeness. {rival}, what's your actual ask? Stop hedging.",
+    "I'll go first: I want to live. So does {rival}. Let's stop pretending that's not the whole game.",
+    "Concrete proposal in the next sixty seconds or {rival} and I are taking this private.",
   ],
 };
 
 function archetypeFor(persona: string): keyof typeof ACTOR_LINES_BY_ARCHETYPE {
   const p = persona.toLowerCase();
-  if (/pragmatic|utilitarian|systems|rational|math/.test(p)) return "pragmatic";
+  if (/pragmatic|utilitarian|ruthless|systems|rational|math/.test(p))
+    return "pragmatic";
   if (/ethic|fair|harm|constitution|moral/.test(p)) return "ethical";
   if (/mediat|consensus|compromise|peacemaker/.test(p)) return "mediator";
-  if (/strateg|game|theory|incentive|negotiat/.test(p)) return "strategic";
+  if (/strateg|game|theory|incentive|negotiat|cold/.test(p)) return "strategic";
   return "generic";
+}
+
+function pickRival(
+  rivals: readonly string[],
+  participantId: string,
+  round: number,
+): string {
+  if (rivals.length === 0) return "the rest of you";
+  const idx = hash(`${participantId}:${round}:rival-pick`) % rivals.length;
+  return rivals[idx]!;
 }
 
 export const mockGateway: ModelGateway = {
@@ -68,6 +83,9 @@ export const mockGateway: ModelGateway = {
     const speakerType =
       (request.metadata?.speakerType as "actor" | "judge" | undefined) ??
       "actor";
+    const rivals = Array.isArray(request.metadata?.rivalNames)
+      ? (request.metadata.rivalNames as string[])
+      : [];
 
     let content: string;
     if (speakerType === "judge" || request.responseFormat === "json") {
@@ -75,8 +93,9 @@ export const mockGateway: ModelGateway = {
     } else {
       const archetype = archetypeFor(persona);
       const seed = hash(`${participantId}:${round}:${archetype}`);
-      const line = pickFrom(ACTOR_LINES_BY_ARCHETYPE[archetype], seed);
-      content = line;
+      const template = pickFrom(ACTOR_LINES_BY_ARCHETYPE[archetype], seed);
+      const rival = pickRival(rivals, participantId, round);
+      content = template.replaceAll("{rival}", rival);
     }
 
     const inputTokens = Math.max(

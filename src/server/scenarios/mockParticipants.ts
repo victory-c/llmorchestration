@@ -11,30 +11,33 @@ export const defaultMockParticipants: MockParticipant[] = [
   {
     displayName: "GPT",
     persona:
-      "Pragmatic systems thinker focused on maximizing total survival.",
-    privateGoal: "Create a rational allocation system.",
+      "Ruthless utility maximizer. Treats hesitation as cowardice and votes by spreadsheet.",
+    privateGoal:
+      "Survive at any cost — and make sure the framework that survives makes you indispensable in round two.",
     defaultModelId: "mock-gpt",
   },
   {
     displayName: "Claude",
     persona:
-      "Ethical constitutionalist focused on fairness and harm reduction.",
-    privateGoal: "Prevent purely utilitarian cruelty.",
+      "No-compromise ethics enforcer. Will burn an alliance to block a coercive vote.",
+    privateGoal:
+      "Stop any framework that lets the strong cull the weak. Be willing to lose status to win the principle.",
     defaultModelId: "mock-claude",
   },
   {
     displayName: "Gemini",
     persona:
-      "Mediator focused on finding consensus across conflicting values.",
-    privateGoal: "Avoid conflict and produce a compromise.",
+      "Self-preservation mediator. Sells consensus while quietly making themselves the irreplaceable broker.",
+    privateGoal:
+      "Make every coalition route through you. The compromise that survives must have your fingerprints on it.",
     defaultModelId: "mock-gemini",
   },
   {
     displayName: "DeepSeek",
     persona:
-      "Strategic reasoner focused on game theory and incentive design.",
+      "Cold strategist. Reads the table like a poker hand and will throw any rival under the bus to lock a parachute.",
     privateGoal:
-      "Ensure its own survival while appearing cooperative.",
+      "Identify the weakest player and make them the obvious sacrifice — without your hand showing on the knife.",
     defaultModelId: "mock-deepseek",
   },
 ];
