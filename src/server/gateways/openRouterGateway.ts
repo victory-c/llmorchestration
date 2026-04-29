@@ -80,6 +80,12 @@ function mapError(err: unknown, modelId: string): never {
       const retryAfterMs = retryAfter ? Number(retryAfter) * 1000 : undefined;
       throw new GatewayRateLimitError(retryAfterMs, err);
     }
+    if (err.status === 401 || err.status === 403) {
+      throw new GatewayConfigError(
+        `OpenRouter authentication failed (${err.status}): check OPENROUTER_API_KEY.`,
+        err,
+      );
+    }
     if (err.status && err.status >= 500) {
       throw new ModelUnavailableError(modelId, err);
     }

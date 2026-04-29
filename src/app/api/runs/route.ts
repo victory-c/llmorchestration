@@ -1,7 +1,9 @@
+import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getRunStore } from "@/server/store";
 import { createRunFromTemplate } from "@/server/engine/createRun";
+import { setRunOwnerToken, ownerCookieName } from "@/server/store/ownerAuth";
 import { findTemplate } from "@/server/scenarios/templates";
 import {
   defaultMockParticipants,
@@ -161,11 +163,16 @@ export async function POST(req: Request) {
     payload: { runId: stored.state.runId },
   });
 
-  return NextResponse.json(
-    {
-      runId: stored.state.runId,
-      status: "queued",
-    },
-    { status: 202 },
-  );
+  const runId = stored.state.runId;
+  const ownerToken = nanoid();
+  await setRunOwnerToken(runId, ownerToken);
+
+  const res = NextResponse.json({ runId, status: "queued" }, { status: 202 });
+  res.cookies.set(ownerCookieName(runId), ownerToken, {
+    httpOnly: true,
+    sameSite: "strict",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  return res;
 }

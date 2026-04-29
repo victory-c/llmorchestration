@@ -81,9 +81,7 @@ export async function runOneRound(
         participantId: participant.id,
         speakerType: "system",
         displayName: "System",
-        content: `${participant.displayName} failed to respond: ${String(
-          result.reason,
-        )}`,
+        content: `${participant.displayName} failed to respond this round.`,
         createdAt: now().toISOString(),
       };
       await deps.store.appendMessage(runId, msg);

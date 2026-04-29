@@ -183,8 +183,12 @@ export const dbQueue: JobQueue = {
 
   async stats(): Promise<JobQueueStats> {
     const rows = await db()
-      .select({ status: jobsTable.status })
-      .from(jobsTable);
+      .select({
+        status: jobsTable.status,
+        count: sql<number>`count(*)`,
+      })
+      .from(jobsTable)
+      .groupBy(jobsTable.status);
     const out: JobQueueStats = {
       queued: 0,
       processing: 0,
@@ -194,9 +198,10 @@ export const dbQueue: JobQueue = {
       total: 0,
     };
     for (const r of rows) {
-      out.total++;
       const k = r.status as JobStatus;
-      if (k in out) out[k]++;
+      const n = Number(r.count);
+      if (k in out) out[k] = n;
+      out.total += n;
     }
     return out;
   },

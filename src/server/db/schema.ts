@@ -70,6 +70,7 @@ export const runs = pgTable(
     terminationReason: text("termination_reason"),
     stateJson: jsonb("state_json").$type<RunState>().notNull(),
     actualCostUsd: real("actual_cost_usd").default(0).notNull(),
+    moderationFlags: integer("moderation_flags").default(0).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

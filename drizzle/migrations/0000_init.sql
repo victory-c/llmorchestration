@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS runs (
   termination_reason text,
   state_json jsonb NOT NULL,
   actual_cost_usd real NOT NULL DEFAULT 0,
+  moderation_flags integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   completed_at timestamptz
