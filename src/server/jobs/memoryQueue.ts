@@ -149,6 +149,24 @@ export const memoryQueue: JobQueue = {
     return store().get(jobId);
   },
 
+  async cleanupOldJobs(olderThanDays: number): Promise<number> {
+    const cutoff = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
+    let count = 0;
+    for (const [id, job] of store().entries()) {
+      if (
+        (job.status === "completed" ||
+          job.status === "cancelled" ||
+          job.status === "failed") &&
+        job.completedAt !== undefined &&
+        job.completedAt < cutoff
+      ) {
+        store().delete(id);
+        count++;
+      }
+    }
+    return count;
+  },
+
   async stats(): Promise<JobQueueStats> {
     const out: JobQueueStats = {
       queued: 0,

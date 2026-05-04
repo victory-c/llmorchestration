@@ -75,14 +75,21 @@ export function resetRateLimitsForTests() {
 }
 
 // X-Forwarded-For is trusted unconditionally here. This is safe only when the
-// app is deployed behind a trusted proxy (Vercel, etc.) that overwrites the
-// header; in other deployments callers can spoof it.
+// app is deployed behind a trusted proxy (Vercel, Cloudflare, etc.) that
+// overwrites the header before it reaches the origin. In other deployments
+// callers can spoof it — consider adding a trusted-proxy check or stripping
+// the header at the edge.
 export function getClientIp(req: Request): string {
   const h = req.headers;
+  // Prefer x-real-ip (set by nginx / Cloudflare) as it is a single value
+  // and harder to spoof through header stacking.
+  const realIp = h.get("x-real-ip");
+  if (realIp) return realIp.trim();
   const forwarded = h.get("x-forwarded-for");
   if (forwarded) {
+    // Take the leftmost (client) entry and strip whitespace
     const first = forwarded.split(",")[0]?.trim();
     if (first) return first;
   }
-  return h.get("x-real-ip") ?? "unknown";
+  return "unknown";
 }

@@ -20,6 +20,26 @@ import {
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
+const MAX_RETRIES = 2;
+
+async function retryWithBackoff<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const isRetryable =
+        err instanceof OpenAI.APIError &&
+        (err.status === 429 || (err.status !== undefined && err.status >= 500));
+      if (!isRetryable || attempt === MAX_RETRIES) throw err;
+      const delayMs = 1000 * Math.pow(2, attempt); // 1s, 2s
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastError;
+}
+
 function client(): OpenAI {
   const env = getEnv();
   const apiKey = env.OPENROUTER_API_KEY;
@@ -117,13 +137,15 @@ export const openRouterGateway: ModelGateway = {
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
-      completion = await openai.chat.completions.create({
-        model: gatewayModelId,
-        messages: buildMessages(clamped),
-        temperature: clamped.temperature ?? 0.7,
-        max_tokens: clamped.maxOutputTokens,
-        response_format: wantsJson ? { type: "json_object" } : undefined,
-      });
+      completion = await retryWithBackoff(() =>
+        openai.chat.completions.create({
+          model: gatewayModelId,
+          messages: buildMessages(clamped),
+          temperature: clamped.temperature ?? 0.7,
+          max_tokens: clamped.maxOutputTokens,
+          response_format: wantsJson ? { type: "json_object" } : undefined,
+        }),
+      );
     } catch (err) {
       mapError(err, clamped.model);
     }
@@ -162,4 +184,8 @@ export const openRouterGateway: ModelGateway = {
       latencyMs,
     };
   },
+
+  // TODO: Streaming support could be added for real-time UI updates.
+  // The OpenAI SDK supports streaming via `stream: true` which would
+  // enable token-by-token delivery to the frontend.
 };

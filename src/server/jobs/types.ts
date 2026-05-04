@@ -84,5 +84,7 @@ export interface JobQueue {
 
   getJob(jobId: string): Promise<Job | undefined>;
 
+  cleanupOldJobs(olderThanDays: number): Promise<number>;
+
   stats(): Promise<JobQueueStats>;
 }

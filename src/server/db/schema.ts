@@ -62,7 +62,7 @@ export const runs = pgTable(
     id: text("id").primaryKey(),
     scenarioId: text("scenario_id")
       .notNull()
-      .references(() => scenarios.id),
+      .references(() => scenarios.id, { onDelete: "cascade" }),
     ownerUserId: text("owner_user_id"),
     status: text("status").$type<RunStatus>().notNull(),
     round: integer("round").default(0).notNull(),
@@ -185,7 +185,9 @@ export const usageEvents = pgTable(
   "usage_events",
   {
     id: text("id").primaryKey(),
-    runId: text("run_id").notNull(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
     participantId: text("participant_id"),
     provider: text("provider"),
     modelId: text("model_id"),

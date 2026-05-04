@@ -22,16 +22,24 @@ export async function createRunFromTemplate(
   const runId = nanoid(12);
   const scenarioId = nanoid(8);
 
+  // Sanitize string inputs
+  const title = input.template.title.trim();
+  const description = input.template.description.trim();
+  if (!title) throw new Error("Scenario title cannot be empty");
+  if (!description) throw new Error("Scenario description cannot be empty");
+
   const scenario: Scenario = {
     id: scenarioId,
-    title: input.template.title,
-    description: input.template.description,
+    title,
+    description,
     category: input.template.category,
     maxRounds: input.maxRounds ?? input.template.maxRounds,
-    publicFacts: input.template.publicFacts,
+    publicFacts: input.template.publicFacts.map((f) => f.trim()).filter(Boolean),
     resources: input.template.resources,
-    rules: input.template.rules,
-    terminationConditions: input.template.terminationConditions,
+    rules: input.template.rules.map((r) => r.trim()).filter(Boolean),
+    terminationConditions: input.template.terminationConditions
+      .map((t) => t.trim())
+      .filter(Boolean),
   };
 
   const resolveModelId =

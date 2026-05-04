@@ -46,3 +46,27 @@ export async function checkRunOwnership(
   const token = parseCookie(cookieHeader, ownerCookieName(runId));
   return token === row.ownerUserId;
 }
+
+// Returns true if the caller is authorized via either the owner cookie or
+// the X-Run-Owner-Token header. Unlike checkRunOwnership, this also checks
+// the header for API consumers that cannot send cookies.
+export async function verifyRunOwner(
+  runId: string,
+  req: Request,
+): Promise<boolean> {
+  if (!hasDatabaseUrl()) return true;
+  const row = await getDb().query.runs.findFirst({
+    where: eq(runs.id, runId),
+    columns: { ownerUserId: true },
+  });
+  if (!row) return false;
+  if (!row.ownerUserId) return true;
+  // Check cookie first
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const cookieToken = parseCookie(cookieHeader, ownerCookieName(runId));
+  if (cookieToken === row.ownerUserId) return true;
+  // Fallback: check X-Run-Owner-Token header
+  const headerToken = req.headers.get("x-run-owner-token");
+  if (headerToken === row.ownerUserId) return true;
+  return false;
+}

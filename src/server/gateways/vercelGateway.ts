@@ -69,6 +69,27 @@ function buildMessages(
   }));
 }
 
+const MAX_RETRIES = 2;
+
+async function retryWithBackoff<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const isRetryable =
+        VercelGatewayRateLimitError.isInstance(err) ||
+        (VercelGatewayError.isInstance(err) &&
+          !(GatewayAuthenticationError.isInstance(err) || GatewayModelNotFoundError.isInstance(err)));
+      if (!isRetryable || attempt === MAX_RETRIES) throw err;
+      const delayMs = 1000 * Math.pow(2, attempt); // 1s, 2s
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastError;
+}
+
 function mapError(err: unknown, modelId: string): never {
   if (VercelGatewayRateLimitError.isInstance(err)) {
     throw new GatewayRateLimitError(undefined, err);
@@ -97,16 +118,18 @@ export const vercelGateway: ModelGateway = {
     let result;
     try {
       const gw = provider();
-      result = await generateText({
-        model: gw.languageModel(gatewayModelId),
-        system: clamped.systemPrompt,
-        messages: buildMessages(clamped),
-        temperature: clamped.temperature ?? 0.7,
-        maxOutputTokens: clamped.maxOutputTokens,
-        ...(wantsJson
-          ? { providerOptions: { gateway: { responseFormat: "json_object" } } }
-          : {}),
-      });
+      result = await retryWithBackoff(() =>
+        generateText({
+          model: gw.languageModel(gatewayModelId),
+          system: clamped.systemPrompt,
+          messages: buildMessages(clamped),
+          temperature: clamped.temperature ?? 0.7,
+          maxOutputTokens: clamped.maxOutputTokens,
+          ...(wantsJson
+            ? { providerOptions: { gateway: { responseFormat: "json_object" } } }
+            : {}),
+        }),
+      );
     } catch (err) {
       mapError(err, clamped.model);
     }
@@ -142,4 +165,8 @@ export const vercelGateway: ModelGateway = {
       latencyMs,
     };
   },
+
+  // TODO: Streaming support could be added for real-time UI updates.
+  // The Vercel AI SDK supports streaming via `streamText` which would
+  // enable token-by-token delivery to the frontend.
 };

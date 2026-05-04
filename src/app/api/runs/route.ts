@@ -35,8 +35,17 @@ export async function POST(req: Request) {
   const env = getEnv();
 
   let body: z.infer<typeof bodySchema>;
+  let json: unknown;
   try {
-    body = bodySchema.parse(await req.json().catch(() => ({})));
+    json = await req.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON body" },
+      { status: 400 },
+    );
+  }
+  try {
+    body = bodySchema.parse(json);
   } catch (e) {
     return NextResponse.json(
       { error: `Invalid body: ${(e as Error).message}` },
