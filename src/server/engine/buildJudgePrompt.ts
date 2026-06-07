@@ -42,7 +42,6 @@ export function buildJudgePrompt(input: BuildJudgePromptInput): ModelRequest {
     "You never favor any model provider or participant.",
     "You are the ONLY source of canonical world-state updates.",
     "You MUST output ONLY valid JSON conforming to the provided schema — no prose, no code fences.",
-    "Your summaries and scene-setters are what keep participants engaged and reactive. Make them vivid and specific.",
   ].join("\n");
 
   const userPrompt = [
@@ -77,11 +76,6 @@ export function buildJudgePrompt(input: BuildJudgePromptInput): ModelRequest {
     "",
     "Output JSON matching this schema:",
     schema,
-    "",
-    "Field guidance (follow this to keep the simulation vivid and reactive):",
-    '- "roundSummary": 2–3 punchy sentences. Name participants by display name. Say who gained ground and who lost it. Call out the most explosive or pivotal moment. Never be bland or generic.',
-    '- "nextRoundPrompt": 2–3 sentences shown to ALL participants at the start of the next round. Name the sharpest unresolved conflict (by participant name if possible), state what is now at stake, and give every actor something specific to react to. If a direct challenge or accusation went unanswered, highlight it. If an alliance formed or fractured, name it. Make participants desperate to speak.',
-    '- "newEvents": flag any concrete moves — proposals made, alliances formed, betrayals, accusations — as discrete events so the transcript stays readable.',
   ].join("\n");
 
   return {
