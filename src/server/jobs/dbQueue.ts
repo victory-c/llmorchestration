@@ -181,6 +181,24 @@ export const dbQueue: JobQueue = {
     return row ? rowToJob(row) : undefined;
   },
 
+  async cleanupOldJobs(olderThanDays: number): Promise<number> {
+    const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
+    const result = await db()
+      .delete(jobsTable)
+      .where(
+        and(
+          or(
+            eq(jobsTable.status, "completed"),
+            eq(jobsTable.status, "cancelled"),
+            eq(jobsTable.status, "failed"),
+          ),
+          lt(jobsTable.completedAt, cutoff),
+        ),
+      )
+      .returning({ id: jobsTable.id });
+    return result.length;
+  },
+
   async stats(): Promise<JobQueueStats> {
     const rows = await db()
       .select({

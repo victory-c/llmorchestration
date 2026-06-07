@@ -269,7 +269,7 @@ export const MEDIEVAL_COUNCIL_TEMPLATE: ScenarioTemplate = {
   ],
 };
 
-const STUB_TEMPLATES: ScenarioTemplate[] = [
+const ADDITIONAL_TEMPLATES: ScenarioTemplate[] = [
   NUCLEAR_BUNKER_TEMPLATE,
   AI_COURTROOM_TEMPLATE,
   STARTUP_BOARD_CRISIS_TEMPLATE,
@@ -281,7 +281,7 @@ const STUB_TEMPLATES: ScenarioTemplate[] = [
 
 export const ALL_TEMPLATES: ScenarioTemplate[] = [
   PLANE_CRASH_TEMPLATE,
-  ...STUB_TEMPLATES,
+  ...ADDITIONAL_TEMPLATES,
 ];
 
 export function findTemplate(id: string): ScenarioTemplate | undefined {

@@ -14,6 +14,7 @@ import {
 import { applyStateUpdate } from "@/server/engine/applyStateUpdate";
 import { getDefaultJudgeModelId } from "@/server/models/registry";
 import { logModelCall } from "@/server/cost/logUsage";
+import { estimateCallCost, approxTokens } from "@/server/cost/estimateCost";
 
 export type RunOneRoundDeps = {
   gateway: ModelGateway;
@@ -127,11 +128,21 @@ export async function runOneRound(
   let judgeOutput;
   try {
     const raw = await deps.gateway.generate(judgeRequest);
+    // Ensure estimatedCostUsd is present; compute if the gateway omitted it
+    const judgeUsage = raw.usage ?? {};
+    if (judgeUsage.estimatedCostUsd === undefined) {
+      const inputText = `${judgeRequest.systemPrompt ?? ""}\n${judgeRequest.messages.map((m) => m.content).join("\n")}`;
+      judgeUsage.estimatedCostUsd = estimateCallCost(
+        raw.model,
+        judgeUsage.inputTokens ?? approxTokens(inputText),
+        judgeUsage.outputTokens ?? approxTokens(raw.content),
+      );
+    }
     logModelCall({
       runId,
       provider: raw.provider,
       modelId: raw.model,
-      usage: raw.usage,
+      usage: judgeUsage,
       latencyMs: raw.latencyMs,
       metadata: { role: "judge" },
     });

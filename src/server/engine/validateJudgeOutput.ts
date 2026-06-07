@@ -19,8 +19,8 @@ const stateUpdateEvent = eventSchema.extend({
   round: z.number().int().optional(),
 });
 
-const judgeOutputSchema = z.object({
-  roundSummary: z.string(),
+export const judgeOutputZodSchema = z.object({
+  roundSummary: z.string().min(1),
   stateUpdates: z
     .object({
       round: z.number().int().optional(),
@@ -73,11 +73,14 @@ export function validateJudgeOutput(raw: string): ValidateResult {
       raw,
     };
   }
-  const result = judgeOutputSchema.safeParse(parsed);
+  const result = judgeOutputZodSchema.safeParse(parsed);
   if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `${i.path.join(".") || "(root)"}: expected ${i.message}`)
+      .join("; ");
     return {
       ok: false,
-      error: `Schema mismatch: ${result.error.message}`,
+      error: `Schema mismatch: ${issues}`,
       raw,
     };
   }

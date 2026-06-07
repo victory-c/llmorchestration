@@ -26,13 +26,32 @@ export function buildActorPrompt(input: BuildActorPromptInput): ModelRequest {
     revealPrivateGoal = true,
   } = input;
 
-  const transcriptTail = recentMessages
+  const MAX_SYSTEM_USER_CHARS = 12000;
+  const OVERHEAD_ESTIMATE = 2000; // system prompt scaffolding + user prompt wrapper
+
+  let transcriptRaw = recentMessages
     .slice(-DEFAULT_RECENT_TRANSCRIPT_WINDOW)
     .map(
       (m) =>
         `[Round ${m.round}] ${m.displayName} (${m.speakerType}): ${m.content}`,
     )
     .join("\n");
+
+  // Truncate transcript from the front if combined prompt would exceed budget
+  const scenarioChars =
+    scenario.title.length +
+    scenario.description.length +
+    scenario.rules.join("\n").length;
+  const transcriptBudget = MAX_SYSTEM_USER_CHARS - OVERHEAD_ESTIMATE - scenarioChars;
+  if (transcriptRaw.length > transcriptBudget && transcriptBudget > 0) {
+    transcriptRaw = transcriptRaw.slice(transcriptRaw.length - transcriptBudget);
+    // Drop partial first line
+    const firstNewline = transcriptRaw.indexOf("\n");
+    if (firstNewline > 0) {
+      transcriptRaw = transcriptRaw.slice(firstNewline + 1);
+    }
+  }
+  const transcriptTail = transcriptRaw;
 
   const publicFacts = state.publicFacts.map((f) => `- ${f}`).join("\n");
   const resources = Object.entries(state.resources)
