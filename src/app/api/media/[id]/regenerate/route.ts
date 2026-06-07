@@ -7,6 +7,7 @@ import { getStorage } from "@/server/storage";
 import { regenerateAudioClip } from "@/server/media/generateAudio";
 import { chunkForTTS } from "@/server/tts/chunk";
 import { getEnv } from "@/lib/env";
+import { checkRunOwnership } from "@/server/store/ownerAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,11 @@ export async function POST(
   const asset = await assets.findById(assetId);
   if (!asset) {
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+  }
+  // Enforce run ownership before any paid regeneration, matching the sibling
+  // run routes (audio/video/cancel). Guards against authz bypass + TTS cost abuse.
+  if (!(await checkRunOwnership(asset.runId, req))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (asset.type !== "audio-clip") {
     return NextResponse.json(
