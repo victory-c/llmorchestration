@@ -23,11 +23,25 @@ async function handle(req: Request) {
   const hasToken = Boolean(env.JOBS_TICK_TOKEN);
   const authorized = hasToken && tokenHeader === env.JOBS_TICK_TOKEN;
 
-  if (hasToken && !authorized && !env.DEMO_MODE) {
-    return NextResponse.json(
-      { error: "Unauthorized: missing or invalid X-Jobs-Tick-Token." },
-      { status: 401 },
-    );
+  // Outside demo mode the tick endpoint drives paid LLM/TTS/video work and
+  // must be authenticated. Previously, leaving JOBS_TICK_TOKEN unset skipped
+  // the check entirely and left the endpoint fully open. Fail closed: require
+  // a configured token in production, and always reject a mismatched one.
+  if (!env.DEMO_MODE) {
+    if (!hasToken) {
+      if (env.NODE_ENV === "production") {
+        return NextResponse.json(
+          { error: "Unavailable: JOBS_TICK_TOKEN is not configured." },
+          { status: 503 },
+        );
+      }
+      // Non-production without a token: allow for local/dev convenience.
+    } else if (!authorized) {
+      return NextResponse.json(
+        { error: "Unauthorized: missing or invalid X-Jobs-Tick-Token." },
+        { status: 401 },
+      );
+    }
   }
 
   if (!authorized && env.DEMO_MODE) {
