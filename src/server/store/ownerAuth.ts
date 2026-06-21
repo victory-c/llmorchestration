@@ -1,7 +1,7 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb, hasDatabaseUrl } from "@/server/db/client";
 import { runs } from "@/server/db/schema";
+import { tokensMatch } from "@/server/safety/secureCompare";
 
 function parseCookie(cookieHeader: string, name: string): string | undefined {
   for (const part of cookieHeader.split(";")) {
@@ -11,17 +11,6 @@ function parseCookie(cookieHeader: string, name: string): string | undefined {
     if (k === name) return part.slice(idx + 1).trim();
   }
   return undefined;
-}
-
-// Constant-time comparison of two secret tokens. Hashing both sides to a
-// fixed-size digest keeps the comparison constant-time regardless of length
-// and avoids the `===` short-circuit that can leak how many leading
-// characters matched.
-function tokensMatch(a: string | undefined, b: string | undefined): boolean {
-  if (a == null || b == null) return false;
-  const ah = createHash("sha256").update(a).digest();
-  const bh = createHash("sha256").update(b).digest();
-  return timingSafeEqual(ah, bh);
 }
 
 export function ownerCookieName(runId: string): string {

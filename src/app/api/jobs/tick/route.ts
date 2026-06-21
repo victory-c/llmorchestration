@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getEnv } from "@/lib/env";
 import { drainJobs } from "@/server/jobs/drain";
 import { checkRateLimit, getClientIp } from "@/server/safety/rateLimit";
+import { tokensMatch } from "@/server/safety/secureCompare";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ async function handle(req: Request) {
 
   const tokenHeader = req.headers.get("x-jobs-tick-token");
   const hasToken = Boolean(env.JOBS_TICK_TOKEN);
-  const authorized = hasToken && tokenHeader === env.JOBS_TICK_TOKEN;
+  const authorized = hasToken && tokensMatch(tokenHeader, env.JOBS_TICK_TOKEN);
 
   // Outside demo mode the tick endpoint drives paid LLM/TTS/video work and
   // must be authenticated. Previously, leaving JOBS_TICK_TOKEN unset skipped

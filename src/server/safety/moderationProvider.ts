@@ -83,6 +83,9 @@ export const openAiModerationProvider: ModerationProvider = {
           model: "omni-moderation-latest",
           input: text,
         }),
+        // Bound the request so a slow/hung upstream can't stall a job. On
+        // abort the catch below falls back to the local keyword check.
+        signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) {
         return findKeywordViolations(field, text);
