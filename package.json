@@ -23,8 +23,8 @@
     "fluent-ffmpeg": "^2.1.3",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.9.0",
-    "nanoid": "^5.1.9",
-    "next": "16.2.6",
+    "nanoid": "^5.1.16",
+    "next": "16.2.12",
     "openai": "^6.34.0",
     "postgres": "^3.4.9",
     "react": "19.2.4",
@@ -40,20 +40,30 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitest/ui": "^4.1.5",
+    "@vitest/ui": "^4.1.11",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.2.12",
     "happy-dom": "^20.9.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@10.33.0",
   "pnpm": {
     "overrides": {
+      "brace-expansion@1": "^1.1.18",
+      "brace-expansion@>=4": "^5.0.9",
+      "browserslist": "^4.28.7",
       "esbuild": "^0.25.0",
-      "postcss": "^8.5.10",
+      "fflate@0.7": "^0.7.5",
+      "fflate@>=0.8": "^0.8.3",
+      "js-yaml@4": "^4.3.1",
+      "nanoid@3": "^3.3.18",
+      "postcss": "^8.5.23",
+      "sharp": "^0.35.0",
+      "undici@6": "^6.28.0",
+      "vite": "^8.0.16",
       "ws": "^8.20.1"
     }
   }
