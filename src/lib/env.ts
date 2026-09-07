@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 const boolFromString = z
-  .union([z.string(), z.boolean(), z.undefined()])
+  .union([z.string(), z.boolean()])
+  .optional()
   .transform((v) => {
     if (typeof v === "boolean") return v;
     if (!v) return false;
@@ -10,7 +11,10 @@ const boolFromString = z
 
 const numFromString = (fallback: number) =>
   z
-    .union([z.string(), z.number(), z.undefined()])
+    // `.optional()` (not `z.undefined()` in the union) is what marks the key
+    // optional — zod >= 4.5 rejects a missing key on a bare union.
+    .union([z.string(), z.number()])
+    .optional()
     .transform((v) => {
       if (typeof v === "number") return v;
       if (!v) return fallback;
