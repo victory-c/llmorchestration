@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRunStore } from "@/server/store";
 import { getMediaAssets } from "@/server/media";
+import { checkRunOwnership } from "@/server/store/ownerAuth";
 import {
   buildStoryboard,
   storyboardToExportJSON,
@@ -19,6 +20,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  if (!(await checkRunOwnership(id, req))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const stored = await getRunStore().getRun(id);
   if (!stored) {
     return NextResponse.json({ error: "Run not found" }, { status: 404 });

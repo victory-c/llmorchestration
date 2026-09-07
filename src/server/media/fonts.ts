@@ -40,7 +40,8 @@ let activeProvider: FontProvider = {
 };
 
 async function fetchFont(url: string): Promise<ArrayBuffer> {
-  const res = await fetch(url);
+  // Bound the download so a slow/hung CDN can't stall font loading forever.
+  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`Failed to load font ${url}: ${res.status}`);
   return res.arrayBuffer();
 }

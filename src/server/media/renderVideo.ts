@@ -183,7 +183,8 @@ async function fetchToFile(urlOrPath: string, dest: string): Promise<void> {
     return;
   }
   if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
-    const res = await fetch(urlOrPath);
+    // Bound the download so a slow/hung upstream can't stall video render.
+    const res = await fetch(urlOrPath, { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`fetch ${urlOrPath} failed: ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
     await fs.writeFile(dest, buf);
