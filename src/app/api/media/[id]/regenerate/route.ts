@@ -8,14 +8,17 @@ import { regenerateAudioClip } from "@/server/media/generateAudio";
 import { chunkForTTS } from "@/server/tts/chunk";
 import { getEnv } from "@/lib/env";
 import { checkRunOwnership } from "@/server/store/ownerAuth";
+import { getClientIp } from "@/server/safety/rateLimit";
+import { checkDailyMediaLimit } from "@/server/safety/dbRateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({}).optional();
 
-// Regenerates a single failed or existing audio clip in place. Reuses the
-// storage key so the URL stays stable.
+// Regenerates a single failed audio clip in place. Reuses the storage key so
+// the URL stays stable. Ready or in-flight clips are refused: each call is a
+// paid synchronous TTS request, and the run owner is whoever created the run.
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -68,6 +71,12 @@ export async function POST(
       { status: 400 },
     );
   }
+  if (asset.status !== "failed") {
+    return NextResponse.json(
+      { error: `Only failed clips can be regenerated (this one is ${asset.status}).` },
+      { status: 409 },
+    );
+  }
 
   const stored = await getRunStore().getRun(asset.runId);
   if (!stored) {
@@ -97,6 +106,21 @@ export async function POST(
   const participant = message.participantId
     ? stored.state.participants.find((p) => p.id === message.participantId)
     : undefined;
+
+  if (env.DEMO_MODE) {
+    const rl = await checkDailyMediaLimit({
+      ip: getClientIp(req),
+      limit: env.MAX_MEDIA_REQUESTS_PER_IP_PER_DAY,
+    });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        {
+          error: `Daily media generation limit reached (${env.MAX_MEDIA_REQUESTS_PER_IP_PER_DAY}). Resets at ${new Date(rl.resetAt).toISOString()}.`,
+        },
+        { status: 429 },
+      );
+    }
+  }
 
   try {
     const updated = await regenerateAudioClip({

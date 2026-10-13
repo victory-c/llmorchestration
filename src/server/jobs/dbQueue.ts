@@ -174,6 +174,21 @@ export const dbQueue: JobQueue = {
     return result.length;
   },
 
+  async hasActiveJobForRun(runId: string, type: JobType) {
+    const [row] = await db()
+      .select({ id: jobsTable.id })
+      .from(jobsTable)
+      .where(
+        and(
+          eq(jobsTable.type, type),
+          or(eq(jobsTable.status, "queued"), eq(jobsTable.status, "processing")),
+          sql`${jobsTable.payloadJson}->>'runId' = ${runId}`,
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
+  },
+
   async getJob(jobId: string) {
     const row = await db().query.jobs.findFirst({
       where: eq(jobsTable.id, jobId),

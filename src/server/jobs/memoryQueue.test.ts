@@ -129,4 +129,17 @@ describe("memoryQueue", () => {
     expect(stats.cancelled).toBe(1);
     expect(stats.queued).toBe(1);
   });
+
+  it("reports an active job per run and type until it finishes", async () => {
+    const job = await memoryQueue.enqueue({
+      type: "generate-audio",
+      payload: { runId: "a" },
+    });
+    expect(await memoryQueue.hasActiveJobForRun("a", "generate-audio")).toBe(true);
+    expect(await memoryQueue.hasActiveJobForRun("a", "generate-video")).toBe(false);
+    expect(await memoryQueue.hasActiveJobForRun("b", "generate-audio")).toBe(false);
+
+    await memoryQueue.completeJob(job.id);
+    expect(await memoryQueue.hasActiveJobForRun("a", "generate-audio")).toBe(false);
+  });
 });

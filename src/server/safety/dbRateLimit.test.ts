@@ -106,6 +106,18 @@ describe("dbRateLimit", () => {
     expect(r3.allowed).toBe(true);
   });
 
+  it("keeps a namespaced counter separate from the run limit", async () => {
+    const ip = "10.1.1.1";
+    const limit = 1;
+
+    expect((await checkDailyRunLimitInDb({ ip, limit })).allowed).toBe(true);
+    const media1 = await checkDailyRunLimitInDb({ ip, limit, namespace: "media" });
+    expect(media1.allowed).toBe(true);
+    const media2 = await checkDailyRunLimitInDb({ ip, limit, namespace: "media" });
+    expect(media2.allowed).toBe(false);
+    expect((await checkDailyRunLimitInDb({ ip, limit })).allowed).toBe(false);
+  });
+
   it("hashes the IP — the raw IP never hits the database", async () => {
     const ip = "192.0.2.55";
     await checkDailyRunLimitInDb({ ip, limit: 5 });

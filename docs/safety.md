@@ -131,8 +131,18 @@ When `DEMO_MODE=true`:
   RETURNING pattern means concurrent requests can't undercount.
 - `/api/jobs/tick` adds a separate per-IP rate limit (~30 calls/min) on top
   to prevent the drainer endpoint itself from being abused.
+- The paid media routes (`/api/runs/:id/audio`, `/api/runs/:id/video`,
+  `/api/media/:id/regenerate`) share a per-IP daily budget,
+  `MAX_MEDIA_REQUESTS_PER_IP_PER_DAY` (default 20), in the same table under
+  a separate namespace. Requests refused for another reason do not spend it.
 
-In dev (`DEMO_MODE=false`) both checks are skipped.
+In dev (`DEMO_MODE=false`) these per-IP checks are skipped.
+
+Media work is also bounded per run in every mode: a generate-audio job only
+synthesizes chunks that have no ready clip yet, each run has at most one
+queued/processing audio job and one video job, video renders are capped at
+`MAX_VIDEO_RENDERS_PER_RUN` (5), and clip regenerate only accepts failed
+clips.
 
 ## Adding new rules
 

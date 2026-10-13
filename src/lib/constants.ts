@@ -6,6 +6,10 @@ export const DEFAULT_MAX_TTS_CHARS = 1000;
 export const DEFAULT_JOB_LEASE_SECONDS = 60;
 export const DEFAULT_JOB_MAX_ATTEMPTS = 3;
 
+// Each video render runs ffmpeg and uploads a new MP4, so cap renders per run
+// (enough to try every built-in style once).
+export const MAX_VIDEO_RENDERS_PER_RUN = 5;
+
 export const DEFAULT_RECENT_TRANSCRIPT_WINDOW = 8;
 
 // Hard caps applied on top of env when DEMO_MODE=true. A self-hoster can
