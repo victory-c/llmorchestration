@@ -33,6 +33,13 @@ function estimateDurationMs(bytes: Uint8Array, fallbackText: string): number {
 export const elevenLabsTTS: TTSProvider = {
   async synthesize(request: TTSRequest): Promise<TTSResponse> {
     const env = getEnv();
+    // Same gate the model gateways get via clampModelRequestTokens: the kill
+    // switch must stop paid TTS too, whichever route or job reached here.
+    if (env.GLOBAL_AI_KILL_SWITCH) {
+      throw new GatewayConfigError(
+        "Paid TTS calls are disabled by GLOBAL_AI_KILL_SWITCH.",
+      );
+    }
     if (!env.ELEVENLABS_API_KEY) {
       throw new GatewayConfigError(
         "ELEVENLABS_API_KEY is not set. Configure it in .env.local or set TTS_PROVIDER=mock.",

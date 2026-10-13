@@ -275,6 +275,7 @@ export async function regenerateAudioClip(options: {
     ttsProviderName,
   );
 
+  const start = Date.now();
   let ttsRes: TTSResponse;
   try {
     ttsRes = await options.deps.tts.synthesize({
@@ -295,6 +296,21 @@ export async function regenerateAudioClip(options: {
     });
     throw err;
   }
+
+  // Meter the synthesis like the full-run path does; it is billed whether
+  // or not the upload below succeeds.
+  logTTSCall({
+    runId: existing.runId,
+    provider: ttsProviderName,
+    estimatedCostUsd: ttsRes.estimatedCostUsd,
+    latencyMs: Date.now() - start,
+    metadata: {
+      assetId: existing.id,
+      messageId: existing.messageId,
+      chars: options.chunkText.length,
+      regenerate: true,
+    },
+  });
 
   const putResult = await options.deps.storage.put(
     existing.storageKey,

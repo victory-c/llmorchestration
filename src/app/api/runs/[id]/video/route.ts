@@ -31,6 +31,12 @@ export async function POST(
       { status: 403 },
     );
   }
+  if (env.GLOBAL_AI_KILL_SWITCH) {
+    return NextResponse.json(
+      { error: "Paid calls are disabled (GLOBAL_AI_KILL_SWITCH=true)." },
+      { status: 403 },
+    );
+  }
 
   const { id } = await params;
 

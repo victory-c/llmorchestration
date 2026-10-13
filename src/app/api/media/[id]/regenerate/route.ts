@@ -27,6 +27,12 @@ export async function POST(
       { status: 403 },
     );
   }
+  if (env.GLOBAL_AI_KILL_SWITCH) {
+    return NextResponse.json(
+      { error: "Paid calls are disabled (GLOBAL_AI_KILL_SWITCH=true)." },
+      { status: 403 },
+    );
+  }
 
   // Body is currently empty — schema is in place so we can accept overrides
   // (e.g. alternate voice) without breaking clients later.

@@ -88,7 +88,7 @@ types are queryable directly in Supabase Studio for retrospective analysis.
 
 | Var | Effect |
 | --- | --- |
-| `GLOBAL_AI_KILL_SWITCH=true` | Every paid model call is rejected with `GatewayConfigError`. Queued jobs stay queued; tick returns `drained: 0`. |
+| `GLOBAL_AI_KILL_SWITCH=true` | Every paid model and TTS call is rejected with `GatewayConfigError`; the audio, video and clip-regenerate routes return HTTP 403. Queued jobs stay queued; tick returns `drained: 0`. |
 | `DISABLE_TTS_GENERATION=true` | Audio generation rejected with HTTP 403. |
 | `DISABLE_VIDEO_GENERATION=true` | Video generation rejected with HTTP 403. |
 | `DEMO_MODE=true` | Tightens caps; enables per-IP rate limiting on `/api/runs` and `/api/jobs/tick`. |
