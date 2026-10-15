@@ -49,6 +49,8 @@ export type GenerateAudioDeps = {
 export type GenerateAudioSummary = {
   runId: string;
   clipsRequested: number;
+  // Chunks that already had a ready clip and were not synthesized again.
+  clipsSkipped: number;
   clipsReady: number;
   clipsFailed: number;
   totalCostUsd: number;
@@ -86,6 +88,7 @@ export async function generateAudioForRun(options: {
   const participantById = new Map(participants.map((p) => [p.id, p]));
 
   let clipsRequested = 0;
+  let clipsSkipped = 0;
   let clipsReady = 0;
   let clipsFailed = 0;
   let totalCostUsd = 0;
@@ -93,6 +96,19 @@ export async function generateAudioForRun(options: {
   // Only synthesize actor messages (judge summaries intentionally silent —
   // they are displayed as on-screen text in the video storyboard).
   const actorMessages = messages.filter((m) => m.speakerType === "actor");
+
+  // Idempotent per chunk: a chunk that already has a ready clip is never
+  // synthesized again, and a leftover failed/processing row for a chunk is
+  // reused instead of inserting a duplicate. Re-running generate-audio for a
+  // run therefore only retries what is missing and cannot multiply TTS spend.
+  const existingByChunk = new Map<string, MediaAsset>();
+  for (const a of await deps.assets.listForRun(runId, "audio-clip")) {
+    const key = chunkKey(a.messageId, a.sequenceIndex);
+    const prev = existingByChunk.get(key);
+    if (!prev || (a.status === "ready" && prev.status !== "ready")) {
+      existingByChunk.set(key, a);
+    }
+  }
 
   // Flatten to (message, chunk) tasks.
   const tasks: Array<{
@@ -105,6 +121,10 @@ export async function generateAudioForRun(options: {
   for (const m of actorMessages) {
     const chunks = chunkForTTS(m.content);
     for (const c of chunks) {
+      if (existingByChunk.get(chunkKey(m.id, c.sequenceIndex))?.status === "ready") {
+        clipsSkipped++;
+        continue;
+      }
       tasks.push({
         message: m,
         participant: m.participantId
@@ -121,15 +141,18 @@ export async function generateAudioForRun(options: {
   // Create pending rows up-front so the UI shows "pending" spinners.
   const pendingAssets: MediaAsset[] = [];
   for (const t of tasks) {
-    const asset = await deps.assets.create({
-      id: nanoid(),
-      runId,
-      messageId: t.message.id,
-      type: "audio-clip",
-      storageKey: audioKey(runId, t.message.id, t.sequenceIndex),
-      status: "processing",
-      sequenceIndex: t.sequenceIndex,
-    });
+    const existing = existingByChunk.get(chunkKey(t.message.id, t.sequenceIndex));
+    const asset = existing
+      ? await deps.assets.update(existing.id, { status: "processing" })
+      : await deps.assets.create({
+          id: nanoid(),
+          runId,
+          messageId: t.message.id,
+          type: "audio-clip",
+          storageKey: audioKey(runId, t.message.id, t.sequenceIndex),
+          status: "processing",
+          sequenceIndex: t.sequenceIndex,
+        });
     pendingAssets.push(asset);
   }
 
@@ -175,6 +198,7 @@ export async function generateAudioForRun(options: {
   return {
     runId,
     clipsRequested,
+    clipsSkipped,
     clipsReady,
     clipsFailed,
     totalCostUsd,
@@ -275,6 +299,7 @@ export async function regenerateAudioClip(options: {
     ttsProviderName,
   );
 
+  const start = Date.now();
   let ttsRes: TTSResponse;
   try {
     ttsRes = await options.deps.tts.synthesize({
@@ -296,11 +321,37 @@ export async function regenerateAudioClip(options: {
     throw err;
   }
 
-  const putResult = await options.deps.storage.put(
-    existing.storageKey,
-    ttsRes.bytes,
-    ttsRes.contentType,
-  );
+  // Meter the synthesis like the full-run path does; it is billed whether
+  // or not the upload below succeeds.
+  logTTSCall({
+    runId: existing.runId,
+    provider: ttsProviderName,
+    estimatedCostUsd: ttsRes.estimatedCostUsd,
+    latencyMs: Date.now() - start,
+    metadata: {
+      assetId: existing.id,
+      messageId: existing.messageId,
+      chars: options.chunkText.length,
+      regenerate: true,
+    },
+  });
+
+  let putResult;
+  try {
+    putResult = await options.deps.storage.put(
+      existing.storageKey,
+      ttsRes.bytes,
+      ttsRes.contentType,
+    );
+  } catch (err) {
+    // Leave the clip retryable (regenerate only accepts failed clips) rather
+    // than stuck in `processing`.
+    await options.deps.assets.update(options.assetId, {
+      status: "failed",
+      failedReason: (err as Error).message,
+    });
+    throw err;
+  }
   return options.deps.assets.update(options.assetId, {
     status: "ready",
     url: putResult.url,
@@ -309,6 +360,10 @@ export async function regenerateAudioClip(options: {
     durationMs: ttsRes.durationMs,
     failedReason: undefined,
   });
+}
+
+function chunkKey(messageId: string | undefined, sequenceIndex: number): string {
+  return `${messageId ?? ""}:${sequenceIndex}`;
 }
 
 function audioKey(

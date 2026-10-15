@@ -23,14 +23,20 @@ function endOfDayMs(now: Date): number {
 //
 // Uses INSERT ... ON CONFLICT DO UPDATE SET count = count + 1 RETURNING count
 // so two concurrent workers cannot both observe count < limit and both succeed.
+//
+// `namespace` keeps a separate counter in the same table (it is folded into
+// the hashed key); omitting it is the original per-IP run limit.
 export async function checkDailyRunLimitInDb(options: {
   ip: string;
   limit: number;
   now?: Date;
+  namespace?: string;
 }): Promise<RateLimitCheck> {
   const now = options.now ?? new Date();
   const day = todayKey(now);
-  const ipHash = hashIp(options.ip);
+  const ipHash = hashIp(
+    options.namespace ? `${options.namespace}:${options.ip}` : options.ip,
+  );
 
   const db = getDb();
 
@@ -75,18 +81,36 @@ export async function checkDailyRunLimit(options: {
   ip: string;
   limit: number;
   now?: Date;
+  namespace?: string;
 }): Promise<RateLimitCheck> {
   const now = options.now ?? new Date();
   if (hasDatabaseUrl()) {
-    return checkDailyRunLimitInDb({ ip: options.ip, limit: options.limit, now });
+    return checkDailyRunLimitInDb({
+      ip: options.ip,
+      limit: options.limit,
+      now,
+      namespace: options.namespace,
+    });
   }
   // Fallback for local/dev: in-memory per-day bucket.
   const day = todayKey(now);
   return checkRateLimit({
-    namespace: "runs-per-day",
+    namespace: options.namespace
+      ? `${options.namespace}-per-day`
+      : "runs-per-day",
     key: `${options.ip}:${day}`,
     limit: options.limit,
     windowMs: 24 * 60 * 60 * 1000,
     now: () => now.getTime(),
   });
+}
+
+// Hosted-demo per-IP/day budget shared by the paid media routes (/audio,
+// /video and clip regenerate). Same table and atomic upsert as the run limit.
+export function checkDailyMediaLimit(options: {
+  ip: string;
+  limit: number;
+  now?: Date;
+}): Promise<RateLimitCheck> {
+  return checkDailyRunLimit({ ...options, namespace: "media" });
 }

@@ -88,7 +88,7 @@ types are queryable directly in Supabase Studio for retrospective analysis.
 
 | Var | Effect |
 | --- | --- |
-| `GLOBAL_AI_KILL_SWITCH=true` | Every paid model call is rejected with `GatewayConfigError`. Queued jobs stay queued; tick returns `drained: 0`. |
+| `GLOBAL_AI_KILL_SWITCH=true` | Every paid model and TTS call is rejected with `GatewayConfigError`; the audio, video and clip-regenerate routes return HTTP 403. Queued jobs stay queued; tick returns `drained: 0`. |
 | `DISABLE_TTS_GENERATION=true` | Audio generation rejected with HTTP 403. |
 | `DISABLE_VIDEO_GENERATION=true` | Video generation rejected with HTTP 403. |
 | `DEMO_MODE=true` | Tightens caps; enables per-IP rate limiting on `/api/runs` and `/api/jobs/tick`. |
@@ -131,8 +131,18 @@ When `DEMO_MODE=true`:
   RETURNING pattern means concurrent requests can't undercount.
 - `/api/jobs/tick` adds a separate per-IP rate limit (~30 calls/min) on top
   to prevent the drainer endpoint itself from being abused.
+- The paid media routes (`/api/runs/:id/audio`, `/api/runs/:id/video`,
+  `/api/media/:id/regenerate`) share a per-IP daily budget,
+  `MAX_MEDIA_REQUESTS_PER_IP_PER_DAY` (default 20), in the same table under
+  a separate namespace. Requests refused for another reason do not spend it.
 
-In dev (`DEMO_MODE=false`) both checks are skipped.
+In dev (`DEMO_MODE=false`) these per-IP checks are skipped.
+
+Media work is also bounded per run in every mode: a generate-audio job only
+synthesizes chunks that have no ready clip yet, each run has at most one
+queued/processing audio job and one video job, video renders are capped at
+`MAX_VIDEO_RENDERS_PER_RUN` (5), and clip regenerate only accepts failed
+clips.
 
 ## Adding new rules
 

@@ -82,6 +82,9 @@ export interface JobQueue {
 
   cancelJobsForRun(runId: string): Promise<number>;
 
+  // True when a queued or processing job of `type` exists for the run.
+  hasActiveJobForRun(runId: string, type: JobType): Promise<boolean>;
+
   getJob(jobId: string): Promise<Job | undefined>;
 
   cleanupOldJobs(olderThanDays: number): Promise<number>;

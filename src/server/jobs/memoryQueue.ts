@@ -145,6 +145,15 @@ export const memoryQueue: JobQueue = {
     return count;
   },
 
+  async hasActiveJobForRun(runId, type) {
+    for (const job of store().values()) {
+      if (job.type !== type) continue;
+      if ((job.payloadJson as { runId?: string }).runId !== runId) continue;
+      if (job.status === "queued" || job.status === "processing") return true;
+    }
+    return false;
+  },
+
   async getJob(jobId) {
     return store().get(jobId);
   },

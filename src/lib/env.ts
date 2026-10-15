@@ -67,6 +67,9 @@ const envSchema = z.object({
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
 
   MAX_RUNS_PER_IP_PER_DAY: numFromString(3),
+  // DEMO_MODE only: shared per-IP/day budget for the paid media routes
+  // (/audio, /video, clip regenerate).
+  MAX_MEDIA_REQUESTS_PER_IP_PER_DAY: numFromString(20),
   MAX_PARTICIPANTS_PER_RUN: numFromString(6),
   MAX_ROUNDS_PER_RUN: numFromString(6),
   MAX_OUTPUT_TOKENS_PER_CALL: numFromString(400),
